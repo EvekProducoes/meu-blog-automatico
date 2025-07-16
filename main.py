@@ -2,7 +2,7 @@ import os
 import requests
 import google.generativeai as genai
 import sys
-from urllib.parse import quote # Importação necessária para a nova função
+from urllib.parse import quote
 
 # --- 1. CONFIGURAÇÃO E VALIDAÇÃO DAS CHAVES ---
 try:
@@ -26,7 +26,7 @@ def fetch_trending_topic():
         response = requests.get(url_headlines)
         response.raise_for_status()
         articles = response.json().get('articles')
-        if articles:
+        if articles and articles[0].get('title'):
             topic = articles[0]['title']
             print(f"Tópico encontrado na primeira tentativa: {topic}")
             return topic
@@ -39,18 +39,17 @@ def fetch_trending_topic():
         response = requests.get(url_search)
         response.raise_for_status()
         articles = response.json().get('articles')
-        if articles:
+        if articles and articles[0].get('title'):
             topic = articles[0]['title']
             print(f"Tópico encontrado na segunda tentativa: {topic}")
             return topic
-        else:
-            print("Nenhum artigo encontrado em ambas as tentativas.")
-            return None
     except requests.exceptions.RequestException as e:
         print(f"ERRO na segunda tentativa de buscar notícias: {e}")
-        return None
+    
+    print("Nenhum artigo encontrado em ambas as tentativas.")
+    return None
 
-# --- 3. BUSCAR IMAGEM RELEVANTE (Pexels) ---
+# --- 3. BUSCAR IMAGEM RELEVANTE ---
 def get_image_url(query):
     if not query: return None
     print(f"Buscando imagem para '{query}' no Pexels...")
@@ -64,27 +63,22 @@ def get_image_url(query):
             image_url = photos[0]['src']['large']
             print(f"Imagem encontrada: {image_url}")
             return image_url
-        else:
-            print("Nenhuma imagem encontrada para o tópico.")
-            return None
     except requests.exceptions.RequestException as e:
         print(f"ERRO ao buscar imagem: {e}")
-        return None
+    
+    print("Nenhuma imagem encontrada para o tópico. Usando imagem de contingência.")
+    return "https://images.pexels.com/photos/2882552/pexels-photo-2882552.jpeg" # Imagem genérica
 
-# --- 4. GERAR CONTEÚDO DO POST (Gemini AI) ---
+# --- 4. GERAR CONTEÚDO DO POST ---
 def generate_facebook_post(topic):
     if not topic: return None
     print("Gerando texto do post com a API do Gemini...")
     model = genai.GenerativeModel('gemini-1.5-flash')
     prompt = f"""
     Você é um social media especialista em criar posts para o Facebook para a página "NoticiandoDigital".
-    Sua tarefa é criar um post curto e informativo sobre o seguinte tema, que é uma notícia relevante do dia no Brasil: "{topic}".
-    O post deve seguir estas regras:
-    - Ter um tom informativo, mas acessível e interessante.
-    - Ter no máximo 3 parágrafos curtos.
-    - Incluir 2 ou 3 emojis relevantes 📰🚀.
-    - Terminar com 3 hashtags relevantes e populares.
-    Responda apenas com o texto do post, sem qualquer outra introdução ou despedida.
+    Sua tarefa é criar um post curto e informativo sobre o seguinte tema: "{topic}".
+    O post deve ter um tom informativo, mas acessível. Inclua 2 ou 3 emojis e 3 hashtags relevantes.
+    Responda apenas com o texto do post.
     """
     try:
         response = model.generate_content(prompt)
@@ -94,19 +88,15 @@ def generate_facebook_post(topic):
         print(f"ERRO ao gerar conteúdo com o Gemini: {e}")
         return None
 
-# --- 5. PUBLICAR NO FACEBOOK (VERSÃO FINAL COM UPLOAD DIRETO) ---
+# --- 5. PUBLICAR NO FACEBOOK ---
 def post_to_facebook(message, image_url):
     if not message or not image_url:
         print("Conteúdo ou imagem faltando, publicação cancelada.")
         return
     
-    # A mensagem agora precisa ser codificada para ir na URL
     message_encoded = quote(message)
     post_url = f'https://graph.facebook.com/{FACEBOOK_PAGE_ID}/photos?message={message_encoded}&access_token={FACEBOOK_ACCESS_TOKEN}'
-    
-    payload = {
-        'url': image_url
-    }
+    payload = {'url': image_url}
     
     try:
         print("Publicando no Facebook...")
@@ -115,21 +105,25 @@ def post_to_facebook(message, image_url):
         print(">>> SUCESSO! Post publicado na Página do Facebook.")
     except requests.exceptions.RequestException as e:
         print(f"ERRO ao postar no Facebook: {e}")
-        print(f"Detalhes do erro: {e.response.json()}")
+        if e.response:
+            print(f"Detalhes do erro: {e.response.json()}")
 
-# --- FUNÇÃO PRINCIPAL ---
+# --- FUNÇÃO PRINCIPAL (LÓGICA DE CONTINGÊNCIA) ---
 if __name__ == "__main__":
     print("--- INICIANDO ROTINA DE POSTAGEM AUTOMÁTICA ---")
     topic = fetch_trending_topic()
-    if topic:
-        # Para o teste final, vamos usar a imagem fixa para garantir.
-        # Depois que funcionar, podemos trocar de volta para a busca dinâmica.
-        # image_url = get_image_url(topic) 
-        image_url = "https://images.pexels.com/photos/844297/pexels-photo-844297.jpeg" # Imagem de teste genérica
-        print(f"Usando imagem de teste: {image_url}")
-        
-        post_text = generate_facebook_post(topic)
-        post_to_facebook(post_text, image_url)
+    
+    # Lógica de Contingência
+    if not topic:
+        print("Nenhum tópico de notícia encontrado. Gerando um post de contingência.")
+        topic = "Resumo de Notícias" # Tópico genérico
+        post_text = "Fique por dentro das últimas novidades e acontecimentos. O NoticiandoDigital traz para você as informações mais recentes! 🌐 #Notícias #Brasil #Atualidades"
+        image_url = "https://images.pexels.com/photos/158651/news-newsletter-newspaper-information-158651.jpeg" # Imagem genérica de notícias
     else:
-        print("Rotina encerrada pois não foi possível obter um tópico.")
+        post_text = generate_facebook_post(topic)
+        image_url = get_image_url(topic)
+
+    # Garante que a publicação aconteça
+    post_to_facebook(post_text, image_url)
+    
     print("--- ROTINA FINALIZADA ---")
