@@ -18,9 +18,8 @@ except KeyError as e:
 genai.configure(api_key=GEMINI_API_KEY)
 
 
-# --- 2. BUSCAR TÓPICO (VERSÃO APRIMORADA) ---
+# --- 2. BUSCAR TÓPICO ---
 def fetch_trending_topic():
-    """Busca a principal manchete, com uma segunda tentativa de busca genérica se a primeira falhar."""
     print("Tentativa 1: Buscando manchetes principais do Brasil...")
     url_headlines = f'https://gnews.io/api/v4/top-headlines?lang=pt&country=br&max=1&apikey={GNEWS_API_KEY}'
     try:
@@ -89,14 +88,17 @@ def generate_facebook_post(topic):
         print(f"ERRO ao gerar conteúdo com o Gemini: {e}")
         return None
 
-# --- 5. PUBLICAR NO FACEBOOK ---
+# --- 5. PUBLICAR NO FACEBOOK (VERSÃO CORRIGIDA COM UPLOAD DIRETO) ---
 def post_to_facebook(message, image_url):
     if not message or not image_url:
         print("Conteúdo ou imagem faltando, publicação cancelada.")
         return
     
+    # A mensagem agora vai no parâmetro da URL, e precisa ser "codificada"
     message_encoded = quote(message)
     post_url = f'https://graph.facebook.com/{FACEBOOK_PAGE_ID}/photos?message={message_encoded}&access_token={FACEBOOK_ACCESS_TOKEN}'
+    
+    # O payload agora contém a URL da imagem para o Facebook baixar
     payload = {'url': image_url}
     
     try:
@@ -114,17 +116,15 @@ if __name__ == "__main__":
     print("--- INICIANDO ROTINA DE POSTAGEM AUTOMÁTICA ---")
     topic = fetch_trending_topic()
     
-    # Lógica de Contingência
     if not topic:
         print("Nenhum tópico de notícia encontrado. Gerando um post de contingência.")
-        topic = "Resumo de Notícias" # Tópico genérico para a busca de imagem
+        topic = "Resumo de Notícias" 
         post_text = "Fique por dentro das últimas novidades e acontecimentos. O NoticiandoDigital traz para você as informações mais recentes! 🌐 #Notícias #Brasil #Atualidades"
-        image_url = get_image_url(topic) # Busca uma imagem genérica para "Resumo de Notícias"
+        image_url = get_image_url(topic) 
     else:
         post_text = generate_facebook_post(topic)
         image_url = get_image_url(topic)
 
-    # Garante que a publicação aconteça
     if post_text and image_url:
         post_to_facebook(post_text, image_url)
     else:
