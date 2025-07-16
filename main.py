@@ -20,6 +20,7 @@ genai.configure(api_key=GEMINI_API_KEY)
 
 # --- 2. BUSCAR TÓPICO (VERSÃO APRIMORADA) ---
 def fetch_trending_topic():
+    """Busca a principal manchete, com uma segunda tentativa de busca genérica se a primeira falhar."""
     print("Tentativa 1: Buscando manchetes principais do Brasil...")
     url_headlines = f'https://gnews.io/api/v4/top-headlines?lang=pt&country=br&max=1&apikey={GNEWS_API_KEY}'
     try:
@@ -67,7 +68,7 @@ def get_image_url(query):
         print(f"ERRO ao buscar imagem: {e}")
     
     print("Nenhuma imagem encontrada para o tópico. Usando imagem de contingência.")
-    return "https://images.pexels.com/photos/2882552/pexels-photo-2882552.jpeg" # Imagem genérica
+    return "https://images.pexels.com/photos/2882552/pexels-photo-2882552.jpeg"
 
 # --- 4. GERAR CONTEÚDO DO POST ---
 def generate_facebook_post(topic):
@@ -76,7 +77,7 @@ def generate_facebook_post(topic):
     model = genai.GenerativeModel('gemini-1.5-flash')
     prompt = f"""
     Você é um social media especialista em criar posts para o Facebook para a página "NoticiandoDigital".
-    Sua tarefa é criar um post curto e informativo sobre o seguinte tema: "{topic}".
+    Sua tarefa é criar um post curto e informativo sobre o seguinte tema, que é uma notícia relevante do dia no Brasil: "{topic}".
     O post deve ter um tom informativo, mas acessível. Inclua 2 ou 3 emojis e 3 hashtags relevantes.
     Responda apenas com o texto do post.
     """
@@ -116,14 +117,17 @@ if __name__ == "__main__":
     # Lógica de Contingência
     if not topic:
         print("Nenhum tópico de notícia encontrado. Gerando um post de contingência.")
-        topic = "Resumo de Notícias" # Tópico genérico
+        topic = "Resumo de Notícias" # Tópico genérico para a busca de imagem
         post_text = "Fique por dentro das últimas novidades e acontecimentos. O NoticiandoDigital traz para você as informações mais recentes! 🌐 #Notícias #Brasil #Atualidades"
-        image_url = "https://images.pexels.com/photos/158651/news-newsletter-newspaper-information-158651.jpeg" # Imagem genérica de notícias
+        image_url = get_image_url(topic) # Busca uma imagem genérica para "Resumo de Notícias"
     else:
         post_text = generate_facebook_post(topic)
         image_url = get_image_url(topic)
 
     # Garante que a publicação aconteça
-    post_to_facebook(post_text, image_url)
+    if post_text and image_url:
+        post_to_facebook(post_text, image_url)
+    else:
+        print("Falha na geração do post ou busca da imagem. Publicação cancelada.")
     
     print("--- ROTINA FINALIZADA ---")
