@@ -2,6 +2,7 @@ import os
 import requests
 import google.generativeai as genai
 import sys
+from urllib.parse import quote # Importação necessária para a nova função
 
 # --- 1. CONFIGURAÇÃO E VALIDAÇÃO DAS CHAVES ---
 try:
@@ -49,14 +50,28 @@ def fetch_trending_topic():
         print(f"ERRO na segunda tentativa de buscar notícias: {e}")
         return None
 
-# --- 3. BUSCAR IMAGEM (MODIFICADO PARA TESTE) ---
+# --- 3. BUSCAR IMAGEM RELEVANTE (Pexels) ---
 def get_image_url(query):
-    # <-- MUDANÇA PARA O TESTE
-    # Ignora a busca e retorna diretamente a sua imagem de teste.
-    print("Usando URL de imagem fixa para o teste.")
-    return "https://i.imgur.com/KzQ3oA8.png"
+    if not query: return None
+    print(f"Buscando imagem para '{query}' no Pexels...")
+    url = f'https://api.pexels.com/v1/search?query={query}&per_page=1&orientation=landscape'
+    headers = {'Authorization': PEXELS_API_KEY}
+    try:
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        photos = response.json().get('photos')
+        if photos:
+            image_url = photos[0]['src']['large']
+            print(f"Imagem encontrada: {image_url}")
+            return image_url
+        else:
+            print("Nenhuma imagem encontrada para o tópico.")
+            return None
+    except requests.exceptions.RequestException as e:
+        print(f"ERRO ao buscar imagem: {e}")
+        return None
 
-# --- 4. GERAR CONTEÚDO DO POST ---
+# --- 4. GERAR CONTEÚDO DO POST (Gemini AI) ---
 def generate_facebook_post(topic):
     if not topic: return None
     print("Gerando texto do post com a API do Gemini...")
@@ -79,19 +94,22 @@ def generate_facebook_post(topic):
         print(f"ERRO ao gerar conteúdo com o Gemini: {e}")
         return None
 
-# --- 5. PUBLICAR NO FACEBOOK ---
+# --- 5. PUBLICAR NO FACEBOOK (VERSÃO FINAL COM UPLOAD DIRETO) ---
 def post_to_facebook(message, image_url):
     if not message or not image_url:
         print("Conteúdo ou imagem faltando, publicação cancelada.")
         return
-    print("Publicando no Facebook...")
-    post_url = f'https://graph.facebook.com/{FACEBOOK_PAGE_ID}/photos'
+    
+    # A mensagem agora precisa ser codificada para ir na URL
+    message_encoded = quote(message)
+    post_url = f'https://graph.facebook.com/{FACEBOOK_PAGE_ID}/photos?message={message_encoded}&access_token={FACEBOOK_ACCESS_TOKEN}'
+    
     payload = {
-        'message': message,
-        'url': image_url,
-        'access_token': FACEBOOK_ACCESS_TOKEN
+        'url': image_url
     }
+    
     try:
+        print("Publicando no Facebook...")
         response = requests.post(post_url, data=payload)
         response.raise_for_status()
         print(">>> SUCESSO! Post publicado na Página do Facebook.")
@@ -101,10 +119,15 @@ def post_to_facebook(message, image_url):
 
 # --- FUNÇÃO PRINCIPAL ---
 if __name__ == "__main__":
-    print("--- INICIANDO ROTINA DE POSTAGEM AUTOMÁTICA (MODO TESTE DE IMAGEM) ---")
+    print("--- INICIANDO ROTINA DE POSTAGEM AUTOMÁTICA ---")
     topic = fetch_trending_topic()
     if topic:
-        image_url = get_image_url(topic)
+        # Para o teste final, vamos usar a imagem fixa para garantir.
+        # Depois que funcionar, podemos trocar de volta para a busca dinâmica.
+        # image_url = get_image_url(topic) 
+        image_url = "https://images.pexels.com/photos/844297/pexels-photo-844297.jpeg" # Imagem de teste genérica
+        print(f"Usando imagem de teste: {image_url}")
+        
         post_text = generate_facebook_post(topic)
         post_to_facebook(post_text, image_url)
     else:
