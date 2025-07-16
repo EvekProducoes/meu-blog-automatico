@@ -17,6 +17,7 @@ except KeyError as e:
 
 genai.configure(api_key=GEMINI_API_KEY)
 
+
 # --- 2. BUSCAR TÓPICO ---
 def fetch_trending_topic():
     print("Tentativa 1: Buscando manchetes principais do Brasil...")
@@ -87,22 +88,21 @@ def generate_facebook_post(topic):
         print(f"ERRO ao gerar conteúdo com o Gemini: {e}")
         return None
 
-# --- 5. PUBLICAR NO FACEBOOK (VERSÃO CORRIGIDA COM UPLOAD DIRETO) ---
+# --- 5. PUBLICAR NO FACEBOOK (VERSÃO 100% CORRIGIDA) ---
 def post_to_facebook(message, image_url):
     if not message or not image_url:
         print("Conteúdo ou imagem faltando, publicação cancelada.")
         return
     
-    message_encoded = quote(message)
-    post_url = f'https://graph.facebook.com/{FACEBOOK_PAGE_ID}/feed'
+    # A URL agora é limpa, sem a mensagem ou o token
+    post_url = f'https://graph.facebook.com/{FACEBOOK_PAGE_ID}/photos'
+    
+    # A mensagem, a url da imagem e o token vão todos juntos no payload
     payload = {
-        'message': message_encoded,
         'url': image_url,
+        'message': message,
         'access_token': FACEBOOK_ACCESS_TOKEN
     }
-    
-    print(f"URL: {post_url}")
-    print(f"Payload: {payload}")
     
     try:
         print("Publicando no Facebook...")
@@ -121,9 +121,9 @@ if __name__ == "__main__":
     
     if not topic:
         print("Nenhum tópico de notícia encontrado. Gerando um post de contingência.")
-        topic = "Resumo de Notícias" 
+        topic = "Resumo de Notícias"
         post_text = "Fique por dentro das últimas novidades e acontecimentos. O NoticiandoDigital traz para você as informações mais recentes! 🌐 #Notícias #Brasil #Atualidades"
-        image_url = get_image_url(topic) 
+        image_url = get_image_url(topic)
     else:
         post_text = generate_facebook_post(topic)
         image_url = get_image_url(topic)
