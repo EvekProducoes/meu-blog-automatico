@@ -18,36 +18,29 @@ except KeyError as e:
 genai.configure(api_key=GEMINI_API_KEY)
 
 
-# --- 2. BUSCAR TÓPICO ---
+# --- 2. BUSCAR TÓPICO (VERSÃO REFINADA COM CATEGORIA) ---
 def fetch_trending_topic():
-    print("Tentativa 1: Buscando manchetes principais do Brasil...")
-    url_headlines = f'https://gnews.io/api/v4/top-headlines?lang=pt&country=br&max=1&apikey={GNEWS_API_KEY}'
-    try:
-        response = requests.get(url_headlines)
-        response.raise_for_status()
-        articles = response.json().get('articles')
-        if articles and articles[0].get('title'):
-            topic = articles[0]['title']
-            print(f"Tópico encontrado na primeira tentativa: {topic}")
-            return topic
-    except requests.exceptions.RequestException as e:
-        print(f"ERRO na primeira tentativa de buscar notícias: {e}")
-
-    print("Primeira tentativa não retornou resultados. Tentando busca genérica por 'Brasil'...")
-    url_search = f'https://gnews.io/api/v4/search?q=Brasil&lang=pt&country=br&max=1&apikey={GNEWS_API_KEY}'
-    try:
-        response = requests.get(url_search)
-        response.raise_for_status()
-        articles = response.json().get('articles')
-        if articles and articles[0].get('title'):
-            topic = articles[0]['title']
-            print(f"Tópico encontrado na segunda tentativa: {topic}")
-            return topic
-    except requests.exceptions.RequestException as e:
-        print(f"ERRO na segunda tentativa de buscar notícias: {e}")
+    """Busca a principal manchete da categoria 'tecnologia' no Brasil."""
+    print("Buscando manchete de TECNOLOGIA no Brasil...")
     
-    print("Nenhum artigo encontrado em ambas as tentativas.")
-    return None
+    # MUDANÇA AQUI: Adicionamos o parâmetro 'category=technology'
+    category = "technology"
+    url = f'https://gnews.io/api/v4/top-headlines?category={category}&lang=pt&country=br&max=1&apikey={GNEWS_API_KEY}'
+    
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        articles = response.json().get('articles')
+        if articles and articles[0].get('title'):
+            topic = articles[0]['title']
+            print(f"Tópico de tecnologia encontrado: {topic}")
+            return topic
+        else:
+            print(f"Nenhum artigo de '{category}' encontrado hoje.")
+            return None
+    except requests.exceptions.RequestException as e:
+        print(f"ERRO ao buscar notícias de tecnologia: {e}")
+        return None
 
 # --- 3. BUSCAR IMAGEM RELEVANTE ---
 def get_image_url(query):
@@ -67,7 +60,7 @@ def get_image_url(query):
         print(f"ERRO ao buscar imagem: {e}")
     
     print("Nenhuma imagem encontrada para o tópico. Usando imagem de contingência.")
-    return "https://images.pexels.com/photos/2882552/pexels-photo-2882552.jpeg"
+    return "https://images.pexels.com/photos/3861958/pexels-photo-3861958.jpeg" # Imagem genérica de tecnologia
 
 # --- 4. GERAR CONTEÚDO DO POST ---
 def generate_facebook_post(topic):
@@ -75,9 +68,10 @@ def generate_facebook_post(topic):
     print("Gerando texto do post com a API do Gemini...")
     model = genai.GenerativeModel('gemini-1.5-flash')
     prompt = f"""
-    Você é um social media especialista em criar posts para o Facebook para a página "NoticiandoDigital".
-    Sua tarefa é criar um post curto e informativo sobre o seguinte tema, que é uma notícia relevante do dia no Brasil: "{topic}".
-    O post deve ter um tom informativo, mas acessível. Inclua 2 ou 3 emojis e 3 hashtags relevantes.
+    Você é um social media especialista em criar posts para o Facebook para a página "NoticiandoDigital", focada em tecnologia e inovação.
+    Sua tarefa é criar um post curto e informativo sobre a seguinte manchete de tecnologia do dia no Brasil: "{topic}".
+    O post deve ter um tom informativo, mas acessível e interessante. Inclua 2 ou 3 emojis relevantes 💻🚀.
+    Termine com 3 hashtags relevantes como #Tecnologia #Inovação e uma terceira relacionada ao tópico.
     Responda apenas com o texto do post.
     """
     try:
@@ -88,16 +82,13 @@ def generate_facebook_post(topic):
         print(f"ERRO ao gerar conteúdo com o Gemini: {e}")
         return None
 
-# --- 5. PUBLICAR NO FACEBOOK (VERSÃO 100% CORRIGIDA) ---
+# --- 5. PUBLICAR NO FACEBOOK ---
 def post_to_facebook(message, image_url):
     if not message or not image_url:
         print("Conteúdo ou imagem faltando, publicação cancelada.")
         return
     
-    # A URL agora é limpa, sem a mensagem ou o token
     post_url = f'https://graph.facebook.com/{FACEBOOK_PAGE_ID}/photos'
-    
-    # A mensagem, a url da imagem e o token vão todos juntos no payload
     payload = {
         'url': image_url,
         'message': message,
@@ -114,23 +105,20 @@ def post_to_facebook(message, image_url):
         if e.response:
             print(f"Detalhes do erro: {e.response.json()}")
 
-# --- FUNÇÃO PRINCIPAL (LÓGICA DE CONTINGÊNCIA) ---
+# --- FUNÇÃO PRINCIPAL ---
 if __name__ == "__main__":
     print("--- INICIANDO ROTINA DE POSTAGEM AUTOMÁTICA ---")
     topic = fetch_trending_topic()
     
-    if not topic:
-        print("Nenhum tópico de notícia encontrado. Gerando um post de contingência.")
-        topic = "Resumo de Notícias"
-        post_text = "Fique por dentro das últimas novidades e acontecimentos. O NoticiandoDigital traz para você as informações mais recentes! 🌐 #Notícias #Brasil #Atualidades"
-        image_url = get_image_url(topic)
-    else:
+    if topic:
         post_text = generate_facebook_post(topic)
         image_url = get_image_url(topic)
-
-    if post_text and image_url:
-        post_to_facebook(post_text, image_url)
+        
+        if post_text and image_url:
+            post_to_facebook(post_text, image_url)
+        else:
+            print("Falha na geração do post ou busca da imagem. Publicação cancelada.")
     else:
-        print("Falha na geração do post ou busca da imagem. Publicação cancelada.")
+        print("Rotina encerrada pois não foi possível obter um tópico de tecnologia hoje.")
     
     print("--- ROTINA FINALIZADA ---")
