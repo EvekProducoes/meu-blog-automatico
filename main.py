@@ -4,10 +4,9 @@ import google.generativeai as genai
 import sys
 
 # --- 1. CONFIGURAÇÃO E VALIDAÇÃO DAS CHAVES ---
-# Carrega todas as chaves a partir dos "Secrets" do GitHub
 try:
     GEMINI_API_KEY = os.environ['GEMINI_API_KEY']
-    GNEWS_API_KEY = os.environ['GNEWS_API_KEY'] # <-- MUDANÇA AQUI
+    GNEWS_API_KEY = os.environ['GNEWS_API_KEY']
     PEXELS_API_KEY = os.environ['PEXELS_API_KEY']
     FACEBOOK_PAGE_ID = os.environ['FACEBOOK_PAGE_ID']
     FACEBOOK_ACCESS_TOKEN = os.environ['FACEBOOK_ACCESS_TOKEN']
@@ -15,29 +14,42 @@ except KeyError as e:
     print(f"ERRO: A chave secreta {e} não foi encontrada. Verifique as configurações do repositório.")
     sys.exit(1)
 
-# Configura a API do Gemini
 genai.configure(api_key=GEMINI_API_KEY)
 
 
-# --- 2. BUSCAR TÓPICO EM ALTA (AGORA USANDO GNEWS) ---
+# --- 2. BUSCAR TÓPICO (VERSÃO APRIMORADA COM TENTATIVA DUPLA) ---
 def fetch_trending_topic():
-    """Busca a principal manchete no Brasil usando a GNews."""
-    print("Buscando tópico em alta no GNews.io...")
-    # URL da GNews para as principais manchetes do Brasil, em português
-    url = f'https://gnews.io/api/v4/top-headlines?lang=pt&country=br&max=1&apikey={GNEWS_API_KEY}'
+    """Busca a principal manchete, com uma segunda tentativa de busca genérica se a primeira falhar."""
+    # Tentativa 1: Buscar manchetes principais
+    print("Tentativa 1: Buscando manchetes principais do Brasil...")
+    url_headlines = f'https://gnews.io/api/v4/top-headlines?lang=pt&country=br&max=1&apikey={GNEWS_API_KEY}'
     try:
-        response = requests.get(url)
+        response = requests.get(url_headlines)
         response.raise_for_status()
         articles = response.json().get('articles')
         if articles:
             topic = articles[0]['title']
-            print(f"Tópico encontrado: {topic}")
+            print(f"Tópico encontrado na primeira tentativa: {topic}")
+            return topic
+    except requests.exceptions.RequestException as e:
+        print(f"ERRO na primeira tentativa de buscar notícias: {e}")
+
+    # Tentativa 2: Se a primeira falhou ou não retornou artigos, faz uma busca genérica
+    print("Primeira tentativa não retornou resultados. Tentando busca genérica por 'Brasil'...")
+    url_search = f'https://gnews.io/api/v4/search?q=Brasil&lang=pt&country=br&max=1&apikey={GNEWS_API_KEY}'
+    try:
+        response = requests.get(url_search)
+        response.raise_for_status()
+        articles = response.json().get('articles')
+        if articles:
+            topic = articles[0]['title']
+            print(f"Tópico encontrado na segunda tentativa: {topic}")
             return topic
         else:
-            print("Nenhum artigo encontrado na GNews.")
+            print("Nenhum artigo encontrado em ambas as tentativas.")
             return None
     except requests.exceptions.RequestException as e:
-        print(f"ERRO ao buscar notícias na GNews: {e}")
+        print(f"ERRO na segunda tentativa de buscar notícias: {e}")
         return None
 
 # --- 3. BUSCAR IMAGEM RELEVANTE (Pexels - sem mudanças) ---
@@ -68,7 +80,8 @@ def generate_facebook_post(topic):
     model = genai.GenerativeModel('gemini-1.5-flash')
     prompt = f"""
     Você é um social media especialista em criar posts para o Facebook para a página "NoticiandoDigital".
-    Sua tarefa é criar um post curto e informativo sobre o seguinte tema, que é a manchete do dia no Brasil: "{topic}".
+    Sua tarefa é criar um post curto e informativo sobre o seguinte tema, que é uma notícia relevante do dia no Brasil: "{topic}".
+
     O post deve seguir estas regras:
     - Ter um tom informativo, mas acessível e interessante.
     - Ter no máximo 3 parágrafos curtos.
