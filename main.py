@@ -17,7 +17,6 @@ except KeyError as e:
 
 genai.configure(api_key=GEMINI_API_KEY)
 
-
 # --- 2. BUSCAR TÓPICO ---
 def fetch_trending_topic():
     print("Tentativa 1: Buscando manchetes principais do Brasil...")
@@ -94,12 +93,16 @@ def post_to_facebook(message, image_url):
         print("Conteúdo ou imagem faltando, publicação cancelada.")
         return
     
-    # A mensagem agora vai no parâmetro da URL, e precisa ser "codificada"
     message_encoded = quote(message)
-    post_url = f'https://graph.facebook.com/{FACEBOOK_PAGE_ID}/photos?message={message_encoded}&access_token={FACEBOOK_ACCESS_TOKEN}'
+    post_url = f'https://graph.facebook.com/{FACEBOOK_PAGE_ID}/feed'
+    payload = {
+        'message': message_encoded,
+        'url': image_url,
+        'access_token': FACEBOOK_ACCESS_TOKEN
+    }
     
-    # O payload agora contém a URL da imagem para o Facebook baixar
-    payload = {'url': image_url}
+    print(f"URL: {post_url}")
+    print(f"Payload: {payload}")
     
     try:
         print("Publicando no Facebook...")
