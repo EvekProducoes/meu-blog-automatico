@@ -3,7 +3,10 @@ name: Publicar Post Automático Diário
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 11 * * *'
+    # Agenda para rodar 3 vezes ao dia (horário de Brasília)
+    - cron: '0 9 * * *'   # Roda às 06:00
+    - cron: '50 14 * * *' # Roda às 11:50
+    - cron: '50 20 * * *' # Roda às 17:50
 
 jobs:
   build-and-post:
@@ -24,8 +27,6 @@ jobs:
 
       - name: Rodar o script de criação do post
         env:
-          # --- CORREÇÃO ESTÁ AQUI ---
-          # Trocamos a chave antiga pela nova da GNews
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GNEWS_API_KEY: ${{ secrets.GNEWS_API_KEY }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
