@@ -4,9 +4,10 @@ import google.generativeai as genai
 import sys
 
 # --- 1. CONFIGURAÇÃO E VALIDAÇÃO DAS CHAVES ---
+# Carrega todas as chaves a partir dos "Secrets" do GitHub
 try:
     GEMINI_API_KEY = os.environ['GEMINI_API_KEY']
-    NEWS_API_KEY = os.environ['NEWS_API_KEY']
+    GNEWS_API_KEY = os.environ['GNEWS_API_KEY'] # <-- MUDANÇA AQUI
     PEXELS_API_KEY = os.environ['PEXELS_API_KEY']
     FACEBOOK_PAGE_ID = os.environ['FACEBOOK_PAGE_ID']
     FACEBOOK_ACCESS_TOKEN = os.environ['FACEBOOK_ACCESS_TOKEN']
@@ -14,12 +15,16 @@ except KeyError as e:
     print(f"ERRO: A chave secreta {e} não foi encontrada. Verifique as configurações do repositório.")
     sys.exit(1)
 
+# Configura a API do Gemini
 genai.configure(api_key=GEMINI_API_KEY)
 
-# --- 2. BUSCAR TÓPICO EM ALTA ---
+
+# --- 2. BUSCAR TÓPICO EM ALTA (AGORA USANDO GNEWS) ---
 def fetch_trending_topic():
-    print("Buscando tópico em alta no NewsAPI.org...")
-    url = f'https://newsapi.org/v2/top-headlines?country=br&apiKey={NEWS_API_KEY}'
+    """Busca a principal manchete no Brasil usando a GNews."""
+    print("Buscando tópico em alta no GNews.io...")
+    # URL da GNews para as principais manchetes do Brasil, em português
+    url = f'https://gnews.io/api/v4/top-headlines?lang=pt&country=br&max=1&apikey={GNEWS_API_KEY}'
     try:
         response = requests.get(url)
         response.raise_for_status()
@@ -29,13 +34,13 @@ def fetch_trending_topic():
             print(f"Tópico encontrado: {topic}")
             return topic
         else:
-            print("Nenhum artigo encontrado.")
+            print("Nenhum artigo encontrado na GNews.")
             return None
     except requests.exceptions.RequestException as e:
-        print(f"ERRO ao buscar notícias: {e}")
+        print(f"ERRO ao buscar notícias na GNews: {e}")
         return None
 
-# --- 3. BUSCAR IMAGEM RELEVANTE ---
+# --- 3. BUSCAR IMAGEM RELEVANTE (Pexels - sem mudanças) ---
 def get_image_url(query):
     if not query: return None
     print(f"Buscando imagem para '{query}' no Pexels...")
@@ -56,7 +61,7 @@ def get_image_url(query):
         print(f"ERRO ao buscar imagem: {e}")
         return None
 
-# --- 4. GERAR CONTEÚDO DO POST ---
+# --- 4. GERAR CONTEÚDO DO POST (Gemini AI - sem mudanças) ---
 def generate_facebook_post(topic):
     if not topic: return None
     print("Gerando texto do post com a API do Gemini...")
@@ -79,7 +84,7 @@ def generate_facebook_post(topic):
         print(f"ERRO ao gerar conteúdo com o Gemini: {e}")
         return None
 
-# --- 5. PUBLICAR NO FACEBOOK ---
+# --- 5. PUBLICAR NO FACEBOOK (sem mudanças) ---
 def post_to_facebook(message, image_url):
     if not message or not image_url:
         print("Conteúdo ou imagem faltando, publicação cancelada.")
@@ -99,7 +104,7 @@ def post_to_facebook(message, image_url):
         print(f"ERRO ao postar no Facebook: {e}")
         print(f"Detalhes do erro: {e.response.json()}")
 
-# --- FUNÇÃO PRINCIPAL ---
+# --- FUNÇÃO PRINCIPAL (sem mudanças) ---
 if __name__ == "__main__":
     print("--- INICIANDO ROTINA DE POSTAGEM AUTOMÁTICA ---")
     topic = fetch_trending_topic()
