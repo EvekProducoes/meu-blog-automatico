@@ -17,10 +17,8 @@ except KeyError as e:
 genai.configure(api_key=GEMINI_API_KEY)
 
 
-# --- 2. BUSCAR TÓPICO (VERSÃO APRIMORADA COM TENTATIVA DUPLA) ---
+# --- 2. BUSCAR TÓPICO (VERSÃO APRIMORADA) ---
 def fetch_trending_topic():
-    """Busca a principal manchete, com uma segunda tentativa de busca genérica se a primeira falhar."""
-    # Tentativa 1: Buscar manchetes principais
     print("Tentativa 1: Buscando manchetes principais do Brasil...")
     url_headlines = f'https://gnews.io/api/v4/top-headlines?lang=pt&country=br&max=1&apikey={GNEWS_API_KEY}'
     try:
@@ -34,7 +32,6 @@ def fetch_trending_topic():
     except requests.exceptions.RequestException as e:
         print(f"ERRO na primeira tentativa de buscar notícias: {e}")
 
-    # Tentativa 2: Se a primeira falhou ou não retornou artigos, faz uma busca genérica
     print("Primeira tentativa não retornou resultados. Tentando busca genérica por 'Brasil'...")
     url_search = f'https://gnews.io/api/v4/search?q=Brasil&lang=pt&country=br&max=1&apikey={GNEWS_API_KEY}'
     try:
@@ -52,28 +49,14 @@ def fetch_trending_topic():
         print(f"ERRO na segunda tentativa de buscar notícias: {e}")
         return None
 
-# --- 3. BUSCAR IMAGEM RELEVANTE (Pexels - sem mudanças) ---
+# --- 3. BUSCAR IMAGEM (MODIFICADO PARA TESTE) ---
 def get_image_url(query):
-    if not query: return None
-    print(f"Buscando imagem para '{query}' no Pexels...")
-    url = f'https://api.pexels.com/v1/search?query={query}&per_page=1&orientation=landscape'
-    headers = {'Authorization': PEXELS_API_KEY}
-    try:
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()
-        photos = response.json().get('photos')
-        if photos:
-            image_url = photos[0]['src']['large']
-            print(f"Imagem encontrada: {image_url}")
-            return image_url
-        else:
-            print("Nenhuma imagem encontrada para o tópico.")
-            return None
-    except requests.exceptions.RequestException as e:
-        print(f"ERRO ao buscar imagem: {e}")
-        return None
+    # <-- MUDANÇA PARA O TESTE
+    # Ignora a busca e retorna diretamente a sua imagem de teste.
+    print("Usando URL de imagem fixa para o teste.")
+    return "https://i.imgur.com/KzQ3oA8.png"
 
-# --- 4. GERAR CONTEÚDO DO POST (Gemini AI - sem mudanças) ---
+# --- 4. GERAR CONTEÚDO DO POST ---
 def generate_facebook_post(topic):
     if not topic: return None
     print("Gerando texto do post com a API do Gemini...")
@@ -81,7 +64,6 @@ def generate_facebook_post(topic):
     prompt = f"""
     Você é um social media especialista em criar posts para o Facebook para a página "NoticiandoDigital".
     Sua tarefa é criar um post curto e informativo sobre o seguinte tema, que é uma notícia relevante do dia no Brasil: "{topic}".
-
     O post deve seguir estas regras:
     - Ter um tom informativo, mas acessível e interessante.
     - Ter no máximo 3 parágrafos curtos.
@@ -97,7 +79,7 @@ def generate_facebook_post(topic):
         print(f"ERRO ao gerar conteúdo com o Gemini: {e}")
         return None
 
-# --- 5. PUBLICAR NO FACEBOOK (sem mudanças) ---
+# --- 5. PUBLICAR NO FACEBOOK ---
 def post_to_facebook(message, image_url):
     if not message or not image_url:
         print("Conteúdo ou imagem faltando, publicação cancelada.")
@@ -117,9 +99,9 @@ def post_to_facebook(message, image_url):
         print(f"ERRO ao postar no Facebook: {e}")
         print(f"Detalhes do erro: {e.response.json()}")
 
-# --- FUNÇÃO PRINCIPAL (sem mudanças) ---
+# --- FUNÇÃO PRINCIPAL ---
 if __name__ == "__main__":
-    print("--- INICIANDO ROTINA DE POSTAGEM AUTOMÁTICA ---")
+    print("--- INICIANDO ROTINA DE POSTAGEM AUTOMÁTICA (MODO TESTE DE IMAGEM) ---")
     topic = fetch_trending_topic()
     if topic:
         image_url = get_image_url(topic)
