@@ -1,26 +1,59 @@
-import requests
 import os
+import requests
+import sys
 
 def post_to_facebook(page_id, access_token, caption, image_url):
-    url = f"https://graph.facebook.com/{page_id}/photos"
+    """
+    Faz uma postagem no Facebook usando a Graph API.
+    Usa o endpoint /feed para postar mensagem e link da imagem.
+    """
+    post_url = f"https://graph.facebook.com/{page_id}/feed"
+    
     payload = {
-        "url": image_url,
-        "caption": caption,
-        "access_token": access_token
+        'message': caption,
+        'link': image_url,
+        'access_token': access_token
     }
+    
     try:
-        response = requests.post(url, data=payload)
-        if response.status_code == 200:
-            print("Postagem realizada com sucesso!")
-        else:
-            print(f"Erro ao postar: {response.status_code} - {response.text}")
-    except Exception as e:
-        print(f"Erro na solicitação: {str(e)}")
+        print("Publicando no Facebook (usando o endpoint /feed)...")
+        response = requests.post(post_url, data=payload)
+        response.raise_for_status() # Lança um erro se a resposta não for 2xx
+        print(">>> SUCESSO! Post publicado na Página do Facebook.")
+        print(f"Detalhes da resposta: {response.json()}")
+    except requests.exceptions.RequestException as e:
+        print(f"ERRO ao postar no Facebook: {e}")
+        if e.response:
+            print(f"Detalhes do erro: {e.response.json()}")
 
-# Carregar variáveis do ambiente ou interface
-access_token = os.getenv("FB_ACCESS_TOKEN")  # Ajuste o nome conforme GitHub
-page_id = os.getenv("PAGE_ID")  # Ajuste o nome conforme GitHub
-caption = "🚨 Garanta já seu produto Apple com mega desconto! 🚨 A Amazon dos EUA está com ofertas imperdíveis, com descontos de até 32% em diversos produtos! 💻🚀 Corra para garantir o seu antes que acabe! Link na bio. 😉 #Tecnologia #Inovação #AppleDescontos"
-image_url = "https://images.pexels.com/photos/30366457/pexels-photo-30366457.jpeg?auto=compress&cs=tinysrgb&h=650&w=940"
+def main():
+    """
+    Função principal que executa a rotina de postagem de teste.
+    """
+    print("--- INICIANDO ROTINA DE POSTAGEM DE TESTE (/feed) ---")
+    
+    # Carrega as variáveis de ambiente com os nomes corretos do GitHub Secrets
+    access_token = os.getenv("FACEBOOK_ACCESS_TOKEN")
+    page_id = os.getenv("FACEBOOK_PAGE_ID")
+    
+    # Verifica se as variáveis foram carregadas
+    if not page_id or not access_token:
+        print("ERRO: FACEBOOK_PAGE_ID ou FACEBOOK_ACCESS_TOKEN não configurados. Verifique os segredos do repositório.")
+        print("--- ROTINA FINALIZADA ---")
+        return
+        
+    print("Variáveis de ambiente carregadas com sucesso.")
 
-post_to_facebook(page_id, access_token, caption, image_url)
+    # Configurações da postagem de teste
+    caption = "🚨 Teste de Publicação! 🚨 Usando o endpoint /feed para postar uma mensagem com um link de imagem. Se você está vendo isso, o método alternativo funcionou! 😉 #Teste #API #FacebookDev"
+    image_url = "https://i.imgur.com/KzQ3oA8.png" # Usando uma URL de imagem simples e confiável
+    
+    print(f"Texto do post: {caption}")
+    print(f"Link da imagem: {image_url}")
+    
+    post_to_facebook(page_id, access_token, caption, image_url)
+    
+    print("--- ROTINA FINALIZADA ---")
+
+if __name__ == "__main__":
+    main()
