@@ -81,7 +81,7 @@ def generate_facebook_post(topic):
         print(f"ERRO ao gerar conteúdo com o Gemini: {e}")
         return None
 
-# --- 5. PUBLICAR NO FACEBOOK (VERSÃO 100% CORRIGIDA) ---
+# --- 5. PUBLICAR NO FACEBOOK (TENTATIVA 3 - USANDO PARAMS) ---
 def post_to_facebook(message, image_url):
     if not message or not image_url:
         print("Conteúdo ou imagem faltando, publicação cancelada.")
@@ -89,16 +89,17 @@ def post_to_facebook(message, image_url):
     
     post_url = f'https://graph.facebook.com/{FACEBOOK_PAGE_ID}/photos'
     
-    # A mensagem, a url da imagem e o token vão todos juntos no payload
-    payload = {
+    # Desta vez, todos os parâmetros irão na URL via 'params'
+    params = {
         'url': image_url,
-        'message': message,
+        'caption': message,
         'access_token': FACEBOOK_ACCESS_TOKEN
     }
     
     try:
-        print("Publicando no Facebook...")
-        response = requests.post(post_url, data=payload)
+        print("Publicando no Facebook (tentativa com 'params')...")
+        # MUDANÇA AQUI: usando 'params' em vez de 'data'
+        response = requests.post(post_url, params=params)
         response.raise_for_status()
         print(">>> SUCESSO! Post publicado na Página do Facebook.")
     except requests.exceptions.RequestException as e:
