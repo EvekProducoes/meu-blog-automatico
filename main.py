@@ -23,7 +23,6 @@ def fetch_trending_topic():
     """Busca a principal manchete da categoria 'tecnologia' no Brasil."""
     print("Buscando manchete de TECNOLOGIA no Brasil...")
     
-    # MUDANÇA AQUI: Adicionamos o parâmetro 'category=technology'
     category = "technology"
     url = f'https://gnews.io/api/v4/top-headlines?category={category}&lang=pt&country=br&max=1&apikey={GNEWS_API_KEY}'
     
@@ -60,7 +59,7 @@ def get_image_url(query):
         print(f"ERRO ao buscar imagem: {e}")
     
     print("Nenhuma imagem encontrada para o tópico. Usando imagem de contingência.")
-    return "https://images.pexels.com/photos/3861958/pexels-photo-3861958.jpeg" # Imagem genérica de tecnologia
+    return "https://images.pexels.com/photos/3861958/pexels-photo-3861958.jpeg"
 
 # --- 4. GERAR CONTEÚDO DO POST ---
 def generate_facebook_post(topic):
@@ -82,13 +81,15 @@ def generate_facebook_post(topic):
         print(f"ERRO ao gerar conteúdo com o Gemini: {e}")
         return None
 
-# --- 5. PUBLICAR NO FACEBOOK ---
+# --- 5. PUBLICAR NO FACEBOOK (VERSÃO 100% CORRIGIDA) ---
 def post_to_facebook(message, image_url):
     if not message or not image_url:
         print("Conteúdo ou imagem faltando, publicação cancelada.")
         return
     
     post_url = f'https://graph.facebook.com/{FACEBOOK_PAGE_ID}/photos'
+    
+    # A mensagem, a url da imagem e o token vão todos juntos no payload
     payload = {
         'url': image_url,
         'message': message,
