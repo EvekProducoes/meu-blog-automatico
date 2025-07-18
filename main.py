@@ -17,9 +17,9 @@ except KeyError as e:
 genai.configure(api_key=GEMINI_API_KEY)
 
 
-# --- 2. BUSCAR TÓPICO (VERSÃO REFINADA COM CATEGORIA) ---
+# --- 2. BUSCAR TÓPICO E LINK (VERSÃO FINAL) ---
 def fetch_trending_topic():
-    """Busca a principal manchete da categoria 'tecnologia' no Brasil."""
+    """Busca a principal manchete e seu link da categoria 'tecnologia' no Brasil."""
     print("Buscando manchete de TECNOLOGIA no Brasil...")
     
     category = "technology"
@@ -29,16 +29,18 @@ def fetch_trending_topic():
         response = requests.get(url)
         response.raise_for_status()
         articles = response.json().get('articles')
-        if articles and articles[0].get('title'):
+        if articles and articles[0].get('title') and articles[0].get('url'):
             topic = articles[0]['title']
+            article_url = articles[0]['url'] # <-- MUDANÇA: Guardando a URL
             print(f"Tópico de tecnologia encontrado: {topic}")
-            return topic
+            print(f"URL da notícia: {article_url}")
+            return topic, article_url # <-- MUDANÇA: Retornando o título E a URL
         else:
             print(f"Nenhum artigo de '{category}' encontrado hoje.")
-            return None
+            return None, None
     except requests.exceptions.RequestException as e:
         print(f"ERRO ao buscar notícias de tecnologia: {e}")
-        return None
+        return None, None
 
 # --- 3. BUSCAR IMAGEM RELEVANTE ---
 def get_image_url(query):
@@ -60,16 +62,22 @@ def get_image_url(query):
     print("Nenhuma imagem encontrada para o tópico. Usando imagem de contingência.")
     return "https://images.pexels.com/photos/3861958/pexels-photo-3861958.jpeg"
 
-# --- 4. GERAR CONTEÚDO DO POST ---
-def generate_facebook_post(topic):
+# --- 4. GERAR CONTEÚDO DO POST (VERSÃO FINAL) ---
+def generate_facebook_post(topic, article_url): # <-- MUDANÇA: Recebe a URL do artigo
     if not topic: return None
     print("Gerando texto do post com a API do Gemini...")
     model = genai.GenerativeModel('gemini-1.5-flash')
+    
+    # <-- MUDANÇA: O prompt agora inclui a instrução para usar a URL
     prompt = f"""
     Você é um social media especialista em criar posts para o Facebook para a página "NoticiandoDigital", focada em tecnologia e inovação.
     Sua tarefa é criar um post curto e informativo sobre a seguinte manchete de tecnologia do dia no Brasil: "{topic}".
     O post deve ter um tom informativo, mas acessível e interessante. Inclua 2 ou 3 emojis relevantes 💻🚀.
+    No final do post, adicione uma chamada para ação como "Saiba mais na matéria completa:" e então insira a URL da notícia.
     Termine com 3 hashtags relevantes como #Tecnologia #Inovação e uma terceira relacionada ao tópico.
+    
+    A URL da notícia para incluir no final é: {article_url}
+    
     Responda apenas com o texto do post.
     """
     try:
@@ -80,22 +88,21 @@ def generate_facebook_post(topic):
         print(f"ERRO ao gerar conteúdo com o Gemini: {e}")
         return None
 
-# --- 5. PUBLICAR NO FACEBOOK (USANDO O ENDPOINT /FEED) ---
+# --- 5. PUBLICAR NO FACEBOOK ---
 def post_to_facebook(message, image_url):
     if not message or not image_url:
         print("Conteúdo ou imagem faltando, publicação cancelada.")
         return
     
     post_url = f'https://graph.facebook.com/{FACEBOOK_PAGE_ID}/feed'
-    
     payload = {
         'message': message,
-        'link': image_url, # Usando a imagem como um link
+        'link': image_url, # Usando a imagem como um link preview
         'access_token': FACEBOOK_ACCESS_TOKEN
     }
     
     try:
-        print("Publicando no Facebook (usando o endpoint /feed)...")
+        print("Publicando no Facebook...")
         response = requests.post(post_url, data=payload)
         response.raise_for_status()
         print(">>> SUCESSO! Post publicado na Página do Facebook.")
@@ -104,13 +111,13 @@ def post_to_facebook(message, image_url):
         if e.response:
             print(f"Detalhes do erro: {e.response.json()}")
 
-# --- FUNÇÃO PRINCIPAL ---
+# --- FUNÇÃO PRINCIPAL (VERSÃO FINAL) ---
 if __name__ == "__main__":
     print("--- INICIANDO ROTINA DE POSTAGEM AUTOMÁTICA ---")
-    topic = fetch_trending_topic()
+    topic, article_url = fetch_trending_topic() # <-- MUDANÇA: Recebe as duas informações
     
-    if topic:
-        post_text = generate_facebook_post(topic)
+    if topic and article_url:
+        post_text = generate_facebook_post(topic, article_url) # <-- MUDANÇA: Envia as duas informações
         image_url = get_image_url(topic)
         
         if post_text and image_url:
