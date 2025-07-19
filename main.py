@@ -31,10 +31,10 @@ def fetch_trending_topic():
         articles = response.json().get('articles')
         if articles and articles[0].get('title') and articles[0].get('url'):
             topic = articles[0]['title']
-            article_url = articles[0]['url'] # <-- MUDANÇA: Guardando a URL
+            article_url = articles[0]['url']
             print(f"Tópico de tecnologia encontrado: {topic}")
             print(f"URL da notícia: {article_url}")
-            return topic, article_url # <-- MUDANÇA: Retornando o título E a URL
+            return topic, article_url
         else:
             print(f"Nenhum artigo de '{category}' encontrado hoje.")
             return None, None
@@ -63,12 +63,11 @@ def get_image_url(query):
     return "https://images.pexels.com/photos/3861958/pexels-photo-3861958.jpeg"
 
 # --- 4. GERAR CONTEÚDO DO POST (VERSÃO FINAL) ---
-def generate_facebook_post(topic, article_url): # <-- MUDANÇA: Recebe a URL do artigo
+def generate_facebook_post(topic, article_url):
     if not topic: return None
     print("Gerando texto do post com a API do Gemini...")
     model = genai.GenerativeModel('gemini-1.5-flash')
     
-    # <-- MUDANÇA: O prompt agora inclui a instrução para usar a URL
     prompt = f"""
     Você é um social media especialista em criar posts para o Facebook para a página "NoticiandoDigital", focada em tecnologia e inovação.
     Sua tarefa é criar um post curto e informativo sobre a seguinte manchete de tecnologia do dia no Brasil: "{topic}".
@@ -88,21 +87,24 @@ def generate_facebook_post(topic, article_url): # <-- MUDANÇA: Recebe a URL do 
         print(f"ERRO ao gerar conteúdo com o Gemini: {e}")
         return None
 
-# --- 5. PUBLICAR NO FACEBOOK ---
+# --- 5. PUBLICAR NO FACEBOOK (MÉTODO CORRETO E FINAL) ---
 def post_to_facebook(message, image_url):
     if not message or not image_url:
         print("Conteúdo ou imagem faltando, publicação cancelada.")
         return
     
-    post_url = f'https://graph.facebook.com/{FACEBOOK_PAGE_ID}/feed'
+    # Usando o endpoint /photos, o correto para fotos
+    post_url = f'https://graph.facebook.com/{FACEBOOK_PAGE_ID}/photos'
+    
+    # Parâmetros corretos: 'caption' para o texto e 'url' para a imagem
     payload = {
-        'message': message,
-        'link': image_url, # Usando a imagem como um link preview
+        'caption': message,
+        'url': image_url,
         'access_token': FACEBOOK_ACCESS_TOKEN
     }
     
     try:
-        print("Publicando no Facebook...")
+        print("Publicando no Facebook (usando o endpoint /photos)...")
         response = requests.post(post_url, data=payload)
         response.raise_for_status()
         print(">>> SUCESSO! Post publicado na Página do Facebook.")
@@ -111,13 +113,13 @@ def post_to_facebook(message, image_url):
         if e.response:
             print(f"Detalhes do erro: {e.response.json()}")
 
-# --- FUNÇÃO PRINCIPAL (VERSÃO FINAL) ---
+# --- FUNÇÃO PRINCIPAL ---
 if __name__ == "__main__":
     print("--- INICIANDO ROTINA DE POSTAGEM AUTOMÁTICA ---")
-    topic, article_url = fetch_trending_topic() # <-- MUDANÇA: Recebe as duas informações
+    topic, article_url = fetch_trending_topic()
     
     if topic and article_url:
-        post_text = generate_facebook_post(topic, article_url) # <-- MUDANÇA: Envia as duas informações
+        post_text = generate_facebook_post(topic, article_url)
         image_url = get_image_url(topic)
         
         if post_text and image_url:
