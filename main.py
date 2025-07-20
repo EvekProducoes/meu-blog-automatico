@@ -3,7 +3,7 @@ import requests
 import google.generativeai as genai
 import sys
 from serpapi import GoogleSearch
-import json # Importa a biblioteca para formatar a saída
+import json
 
 # --- 1. CONFIGURAÇÃO E VALIDAÇÃO DAS CHAVES ---
 try:
@@ -19,9 +19,9 @@ except KeyError as e:
 genai.configure(api_key=GEMINI_API_KEY)
 
 
-# --- 2. BUSCAR TÓPICO (VERSÃO SERPAPI COM LOG DE DIAGNÓSTICO) ---
+# --- 2. BUSCAR TÓPICO (VERSÃO FINAL E ROBUSTA) ---
 def fetch_trending_topic():
-    """Busca a principal notícia do Google News Brasil usando SerpApi."""
+    """Busca a principal notícia do Google News Brasil usando SerpApi, navegando na estrutura complexa."""
     print("Buscando notícia no Google News via SerpApi...")
     
     params = {
@@ -35,23 +35,35 @@ def fetch_trending_topic():
     try:
         search = GoogleSearch(params)
         results = search.get_dict()
-        
-        # --- NOVO LOG DE DIAGNÓSTICO ---
-        print("--- RESPOSTA COMPLETA DO SERPAPI ---")
-        print(json.dumps(results, indent=2, ensure_ascii=False))
-        print("------------------------------------")
-        
         news_results = results.get("news_results")
         
-        if news_results and news_results[0].get("title") and news_results[0].get("link"):
-            topic = news_results[0]['title']
-            article_url = news_results[0]['link']
-            print(f"Tópico encontrado: {topic}")
-            print(f"URL da notícia: {article_url}")
-            return topic, article_url
-        else:
-            print(f"Nenhum resultado de notícia encontrado na chave 'news_results' do SerpApi.")
+        if not news_results:
+            print("A chave 'news_results' está vazia ou não existe na resposta do SerpApi.")
             return None, None
+
+        # --- LÓGICA DE BUSCA INTELIGENTE ---
+        for result in news_results:
+            # Caso 1: O resultado é um artigo direto (tem 'link' no nível principal)
+            if result.get("link"):
+                topic = result.get("title")
+                article_url = result.get("link")
+                if topic and article_url:
+                    print(f"Tópico encontrado (artigo direto): {topic}")
+                    return topic, article_url
+            
+            # Caso 2: O resultado é um "cluster" de notícias (tem uma sub-lista 'stories')
+            elif result.get("stories"):
+                first_story = result.get("stories")[0]
+                topic = first_story.get("title")
+                article_url = first_story.get("link")
+                if topic and article_url:
+                    print(f"Tópico encontrado (dentro de um cluster): {topic}")
+                    return topic, article_url
+        
+        # Se o loop terminar sem encontrar nada válido
+        print("Nenhum artigo com título e link válidos foi encontrado nos resultados.")
+        return None, None
+
     except Exception as e:
         print(f"ERRO ao buscar notícias no SerpApi: {e}")
         return None, None
