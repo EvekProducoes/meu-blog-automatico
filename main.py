@@ -2,12 +2,13 @@ import os
 import requests
 import google.generativeai as genai
 import sys
-from serpapi import GoogleSearch # Importa a nova biblioteca
+from serpapi import GoogleSearch
+import json # Importa a biblioteca para formatar a saída
 
 # --- 1. CONFIGURAÇÃO E VALIDAÇÃO DAS CHAVES ---
 try:
     GEMINI_API_KEY = os.environ['GEMINI_API_KEY']
-    SERPAPI_API_KEY = os.environ['SERPAPI_API_KEY'] # <-- MUDANÇA AQUI
+    SERPAPI_API_KEY = os.environ['SERPAPI_API_KEY']
     PEXELS_API_KEY = os.environ['PEXELS_API_KEY']
     FACEBOOK_PAGE_ID = os.environ['FACEBOOK_PAGE_ID']
     FACEBOOK_ACCESS_TOKEN = os.environ['FACEBOOK_ACCESS_TOKEN']
@@ -18,7 +19,7 @@ except KeyError as e:
 genai.configure(api_key=GEMINI_API_KEY)
 
 
-# --- 2. BUSCAR TÓPICO (VERSÃO SERPAPI) ---
+# --- 2. BUSCAR TÓPICO (VERSÃO SERPAPI COM LOG DE DIAGNÓSTICO) ---
 def fetch_trending_topic():
     """Busca a principal notícia do Google News Brasil usando SerpApi."""
     print("Buscando notícia no Google News via SerpApi...")
@@ -34,6 +35,12 @@ def fetch_trending_topic():
     try:
         search = GoogleSearch(params)
         results = search.get_dict()
+        
+        # --- NOVO LOG DE DIAGNÓSTICO ---
+        print("--- RESPOSTA COMPLETA DO SERPAPI ---")
+        print(json.dumps(results, indent=2, ensure_ascii=False))
+        print("------------------------------------")
+        
         news_results = results.get("news_results")
         
         if news_results and news_results[0].get("title") and news_results[0].get("link"):
@@ -43,14 +50,13 @@ def fetch_trending_topic():
             print(f"URL da notícia: {article_url}")
             return topic, article_url
         else:
-            print(f"Nenhum resultado de notícia encontrado no SerpApi.")
+            print(f"Nenhum resultado de notícia encontrado na chave 'news_results' do SerpApi.")
             return None, None
     except Exception as e:
         print(f"ERRO ao buscar notícias no SerpApi: {e}")
         return None, None
 
-# --- 3. BUSCAR IMAGEM RELEVANTE ---
-# (Esta função continua a mesma)
+# --- As outras funções continuam as mesmas ---
 def get_image_url(query):
     if not query: return None
     print(f"Buscando imagem para '{query}' no Pexels...")
@@ -66,12 +72,9 @@ def get_image_url(query):
             return image_url
     except requests.exceptions.RequestException as e:
         print(f"ERRO ao buscar imagem: {e}")
-    
     print("Nenhuma imagem encontrada para o tópico. Usando imagem de contingência.")
     return "https://images.pexels.com/photos/3861958/pexels-photo-3861958.jpeg"
 
-# --- 4. GERAR CONTEÚDO DO POST ---
-# (Esta função continua a mesma)
 def generate_facebook_post(topic, article_url):
     if not topic: return None
     print("Gerando texto do post com a API do Gemini...")
@@ -95,13 +98,10 @@ def generate_facebook_post(topic, article_url):
         print(f"ERRO ao gerar conteúdo com o Gemini: {e}")
         return None
 
-# --- 5. PUBLICAR NO FACEBOOK ---
-# (Esta função continua a mesma)
 def post_to_facebook(message, image_url):
     if not message or not image_url:
         print("Conteúdo ou imagem faltando, publicação cancelada.")
         return
-    
     post_url = f'https://graph.facebook.com/{FACEBOOK_PAGE_ID}/photos'
     payload = {
         'caption': message,
@@ -119,20 +119,16 @@ def post_to_facebook(message, image_url):
             print(f"Detalhes do erro: {e.response.json()}")
 
 # --- FUNÇÃO PRINCIPAL ---
-# (Esta função continua a mesma)
 if __name__ == "__main__":
     print("--- INICIANDO ROTINA DE POSTAGEM AUTOMÁTICA ---")
     topic, article_url = fetch_trending_topic()
-    
     if topic and article_url:
         post_text = generate_facebook_post(topic, article_url)
         image_url = get_image_url(topic)
-        
         if post_text and image_url:
             post_to_facebook(post_text, image_url)
         else:
             print("Falha na geração do post ou busca da imagem. Publicação cancelada.")
     else:
         print("Rotina encerrada pois não foi possível obter um tópico hoje.")
-    
     print("--- ROTINA FINALIZADA ---")
