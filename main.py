@@ -36,4 +36,18 @@ def get_top_trend():
         if daily_results and daily_results[0].get("trending_searches"):
             first_trend = daily_results[0]["trending_searches"][0]
             if first_trend.get("title") and first_trend["title"].get("query"):
-                top_trend = first_trend['
+                top_trend = first_trend['title']['query']
+                print(f"Tópico encontrado: {top_trend}")
+                return top_trend
+        
+        print("Não foram encontrados tópicos em alta no SerpApi com a nova estrutura.")
+        print("Resposta completa da API:", results)
+        return None
+
+    except Exception as e:
+        print(f"ERRO ao buscar no SerpApi: {e}")
+        return None
+
+# --- 3. GERAR EXPLICAÇÃO COM O GEMINI ---
+def generate_explanation_post(topic):
+    """Gera um post para o Facebook explicando por que um tópico está em alta."""
