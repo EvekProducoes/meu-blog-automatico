@@ -2,14 +2,14 @@ import os
 import requests
 import google.generativeai as genai
 import sys
-from pytrends.request import TrendReq
+from serpapi import GoogleSearch
 
 # --- 1. CONFIGURAÇÃO E VALIDAÇÃO DAS CHAVES ---
-# Agora só precisamos de 3 chaves!
 try:
     GEMINI_API_KEY = os.environ['GEMINI_API_KEY']
     FACEBOOK_PAGE_ID = os.environ['FACEBOOK_PAGE_ID']
     FACEBOOK_ACCESS_TOKEN = os.environ['FACEBOOK_ACCESS_TOKEN']
+    SERPAPI_API_KEY = os.environ['SERPAPI_API_KEY'] # <-- Adicionamos a chave do SerpApi
 except KeyError as e:
     print(f"ERRO: A chave secreta {e} não foi encontrada. Verifique as configurações do repositório.")
     sys.exit(1)
@@ -17,22 +17,31 @@ except KeyError as e:
 genai.configure(api_key=GEMINI_API_KEY)
 
 
-# --- 2. BUSCAR O PRINCIPAL TÓPICO DO GOOGLE TRENDS ---
+# --- 2. BUSCAR O PRINCIPAL TÓPICO (VERSÃO SERPAPI) ---
 def get_top_trend():
-    """Busca o tópico número 1 em alta no Google Trends para o Brasil."""
-    print("Buscando tópico em alta no Google Trends Brasil...")
+    """Busca os tópicos em alta no Google para o Brasil usando SerpApi."""
+    print("Buscando tópico em alta no Google via SerpApi...")
     try:
-        pytrends = TrendReq(hl='pt-BR', tz=360)
-        trending_df = pytrends.trending_searches(pn='brazil')
-        if not trending_df.empty:
-            top_trend = trending_df.iloc[0, 0]
+        params = {
+          "engine": "google_trends_trending_now",
+          "frequency": "daily",
+          "geo": "BR",
+          "api_key": SERPAPI_API_KEY
+        }
+        search = GoogleSearch(params)
+        results = search.get_dict()
+        
+        trending_results = results.get("trending_searches")
+        
+        if trending_results and trending_results[0].get("title"):
+            top_trend = trending_results[0]['title']['query']
             print(f"Tópico encontrado: {top_trend}")
             return top_trend
         else:
-            print("Não foram encontrados tópicos em alta no Google Trends.")
+            print("Não foram encontrados tópicos em alta no SerpApi.")
             return None
     except Exception as e:
-        print(f"ERRO ao buscar no Google Trends: {e}")
+        print(f"ERRO ao buscar no SerpApi: {e}")
         return None
 
 # --- 3. GERAR EXPLICAÇÃO COM O GEMINI ---
