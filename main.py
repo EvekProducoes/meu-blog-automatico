@@ -17,31 +17,34 @@ except KeyError as e:
 genai.configure(api_key=GEMINI_API_KEY)
 
 
-# --- 2. BUSCAR O PRINCIPAL TÓPICO (VERSÃO SERPAPI) ---
+# --- 2. BUSCAR O PRINCIPAL TÓPICO (VERSÃO SERPAPI CORRIGIDA) ---
 def get_top_trend():
-    """Busca os tópicos em alta no Google para o Brasil usando SerpApi."""
-    print("Buscando tópico em alta no Google via SerpApi...")
+    """Busca os tópicos em alta no Google para o Brasil usando o novo endpoint do SerpApi."""
+    print("Buscando tópico em alta no Google via SerpApi (usando novo endpoint)...")
     try:
         params = {
-          "engine": "google_trends_trending_now",
-          "frequency": "daily",
+          "engine": "google_trends",
+          "data_type": "TRENDING_DAILY", # Novo parâmetro exigido
           "geo": "BR",
           "api_key": SERPAPI_API_KEY
         }
         search = GoogleSearch(params)
         results = search.get_dict()
         
-        # O nome correto da lista que o SerpApi envia é "daily_searches"
-        trending_results = results.get("daily_searches")
+        # A nova estrutura da resposta é diferente
+        daily_results = results.get("daily_results")
         
-        if trending_results and trending_results[0].get("title"):
-            top_trend = trending_results[0]['title']['query']
-            print(f"Tópico encontrado: {top_trend}")
-            return top_trend
-        else:
-            print("Não foram encontrados tópicos em alta no SerpApi. Verifique a resposta da API.")
-            print("Resposta completa:", results)
-            return None
+        if daily_results and daily_results[0].get("trending_searches"):
+            first_trend = daily_results[0]["trending_searches"][0]
+            if first_trend.get("title") and first_trend["title"].get("query"):
+                top_trend = first_trend['title']['query']
+                print(f"Tópico encontrado: {top_trend}")
+                return top_trend
+        
+        print("Não foram encontrados tópicos em alta no SerpApi com a nova estrutura.")
+        print("Resposta completa da API:", results) # Log extra para depuração
+        return None
+
     except Exception as e:
         print(f"ERRO ao buscar no SerpApi: {e}")
         return None
@@ -97,16 +100,4 @@ def post_text_to_facebook(message):
 
 # --- FUNÇÃO PRINCIPAL ---
 if __name__ == "__main__":
-    print("--- INICIANDO ROTINA DO EXPLICADOR DE TENDÊNCIAS ---")
-    topic = get_top_trend()
-    
-    if topic:
-        post_text = generate_explanation_post(topic)
-        if post_text:
-            post_text_to_facebook(post_text)
-        else:
-            print("Não foi possível gerar a explicação para o tópico.")
-    else:
-        print("Rotina encerrada pois não foi possível obter um tópico do Google Trends.")
-    
-    print("--- ROTINA FINALIZADA ---")
+    print("---
