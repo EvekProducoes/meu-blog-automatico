@@ -46,4 +46,56 @@ def generate_explanation_post(topic):
     
     prompt = f"""
     Você é um redator para a página "NoticiandoDigital". Sua especialidade é explicar de forma clara e concisa por que um determinado assunto está em alta nas buscas.
-    O tópico mais pesquisado no
+    O tópico mais pesquisado no Brasil hoje é: "{topic}".
+    Sua tarefa é escrever um post curto para o Facebook (2 ou 3 parágrafos) explicando o contexto e o motivo pelo qual as pessoas estão pesquisando sobre "{topic}".
+    Seja direto, informativo e neutro.
+    Termine o post com 3 hashtags relevantes, sendo a primeira a hashtag do próprio tópico.
+    Responda apenas com o texto do post.
+    """
+    try:
+        response = model.generate_content(prompt)
+        print("Texto gerado com sucesso.")
+        return response.text
+    except Exception as e:
+        print(f"ERRO ao gerar conteúdo com o Gemini: {e}")
+        return None
+
+# --- 4. PUBLICAR TEXTO NO FACEBOOK ---
+def post_text_to_facebook(message):
+    """Publica um post de texto no feed da Página do Facebook."""
+    if not message:
+        print("Conteúdo faltando, publicação cancelada.")
+        return
+    
+    post_url = f'https://graph.facebook.com/{FACEBOOK_PAGE_ID}/feed'
+    
+    payload = {
+        'message': message,
+        'access_token': FACEBOOK_ACCESS_TOKEN
+    }
+    
+    try:
+        print("Publicando no Facebook (usando o endpoint /feed)...")
+        response = requests.post(post_url, data=payload)
+        response.raise_for_status()
+        print(">>> SUCESSO! Post de texto publicado na Página do Facebook.")
+    except requests.exceptions.RequestException as e:
+        print(f"ERRO ao postar no Facebook: {e}")
+        if e.response:
+            print(f"Detalhes do erro: {e.response.json()}")
+
+# --- FUNÇÃO PRINCIPAL ---
+if __name__ == "__main__":
+    print("--- INICIANDO ROTINA DO EXPLICADOR DE TENDÊNCIAS ---")
+    topic = get_top_trend()
+    
+    if topic:
+        post_text = generate_explanation_post(topic)
+        if post_text:
+            post_text_to_facebook(post_text)
+        else:
+            print("Não foi possível gerar a explicação para o tópico.")
+    else:
+        print("Rotina encerrada pois não foi possível obter um tópico do Google Trends.")
+    
+    print("--- ROTINA FINALIZADA ---")
