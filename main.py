@@ -9,7 +9,7 @@ try:
     GEMINI_API_KEY = os.environ['GEMINI_API_KEY']
     FACEBOOK_PAGE_ID = os.environ['FACEBOOK_PAGE_ID']
     FACEBOOK_ACCESS_TOKEN = os.environ['FACEBOOK_ACCESS_TOKEN']
-    SERPAPI_API_KEY = os.environ['SERPAPI_API_KEY'] # <-- Adicionamos a chave do SerpApi
+    SERPAPI_API_KEY = os.environ['SERPAPI_API_KEY']
 except KeyError as e:
     print(f"ERRO: A chave secreta {e} não foi encontrada. Verifique as configurações do repositório.")
     sys.exit(1)
@@ -17,7 +17,7 @@ except KeyError as e:
 genai.configure(api_key=GEMINI_API_KEY)
 
 
-# --- 2. BUSCAR O PRINCIPAL TÓPICO (VERSÃO SERPAPI) ---
+# --- 2. BUSCAR O PRINCIPAL TÓPICO (VERSÃO SERPAPI CORRIGIDA) ---
 def get_top_trend():
     """Busca os tópicos em alta no Google para o Brasil usando SerpApi."""
     print("Buscando tópico em alta no Google via SerpApi...")
@@ -31,14 +31,17 @@ def get_top_trend():
         search = GoogleSearch(params)
         results = search.get_dict()
         
-        trending_results = results.get("trending_searches")
+        # AQUI ESTÁ A CORREÇÃO: O nome correto da lista é "daily_searches"
+        trending_results = results.get("daily_searches")
         
+        # A estrutura do título também é um pouco diferente
         if trending_results and trending_results[0].get("title"):
             top_trend = trending_results[0]['title']['query']
             print(f"Tópico encontrado: {top_trend}")
             return top_trend
         else:
-            print("Não foram encontrados tópicos em alta no SerpApi.")
+            print("Não foram encontrados tópicos em alta no SerpApi. Verifique a resposta da API.")
+            print("Resposta completa:", results) # Log extra para depuração
             return None
     except Exception as e:
         print(f"ERRO ao buscar no SerpApi: {e}")
@@ -71,40 +74,4 @@ def generate_explanation_post(topic):
 
 # --- 4. PUBLICAR TEXTO NO FACEBOOK ---
 def post_text_to_facebook(message):
-    """Publica um post de texto no feed da Página do Facebook."""
-    if not message:
-        print("Conteúdo faltando, publicação cancelada.")
-        return
-    
-    post_url = f'https://graph.facebook.com/{FACEBOOK_PAGE_ID}/feed'
-    
-    payload = {
-        'message': message,
-        'access_token': FACEBOOK_ACCESS_TOKEN
-    }
-    
-    try:
-        print("Publicando no Facebook (usando o endpoint /feed)...")
-        response = requests.post(post_url, data=payload)
-        response.raise_for_status()
-        print(">>> SUCESSO! Post de texto publicado na Página do Facebook.")
-    except requests.exceptions.RequestException as e:
-        print(f"ERRO ao postar no Facebook: {e}")
-        if e.response:
-            print(f"Detalhes do erro: {e.response.json()}")
-
-# --- FUNÇÃO PRINCIPAL ---
-if __name__ == "__main__":
-    print("--- INICIANDO ROTINA DO EXPLICADOR DE TENDÊNCIAS ---")
-    topic = get_top_trend()
-    
-    if topic:
-        post_text = generate_explanation_post(topic)
-        if post_text:
-            post_text_to_facebook(post_text)
-        else:
-            print("Não foi possível gerar a explicação para o tópico.")
-    else:
-        print("Rotina encerrada pois não foi possível obter um tópico do Google Trends.")
-    
-    print("--- ROTINA FINALIZADA ---")
+    """Public
